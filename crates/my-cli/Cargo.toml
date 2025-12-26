@@ -6,5 +6,5 @@ publish = false
 
 [dependencies]
 my-common = { path = "../my-common" }
-my-workspace-hack = { version = "0.1", path = "../my-workspace-hack" }
+tango = { version = "0.1", path = "../tango" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

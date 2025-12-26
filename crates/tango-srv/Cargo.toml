@@ -1,11 +1,9 @@
 [package]
-name = "my-server"
+name = "tango-srv"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
-axum = "0.7.5"
-my-common = { path = "../my-common" }
 tango = { version = "0.1", path = "../tango" }
-tokio = { version = "1.43", features = ["full"] }
+hbb_common = {path = "../../libs/hbb_common" }

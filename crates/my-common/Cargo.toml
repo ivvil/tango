@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-my-workspace-hack = { version = "0.1", path = "../my-workspace-hack" }
+tango = { version = "0.1", path = "../tango" }
 tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
