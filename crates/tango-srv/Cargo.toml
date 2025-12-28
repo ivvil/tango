@@ -6,4 +6,4 @@ publish = false
 
 [dependencies]
 tango = { version = "0.1", path = "../tango" }
-hbb_common = {path = "../../libs/hbb_common" }
+hbb_common = { git = "https://github.com/rustdesk/hbb_common.git" }

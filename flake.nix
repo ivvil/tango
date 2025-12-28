@@ -14,23 +14,22 @@
     };
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      crane,
-      flake-utils,
-      advisory-db,
-      ...
-    }:
+  outputs = {
+    self,
+    nixpkgs,
+    crane,
+    flake-utils,
+    advisory-db,
+    ...
+  }:
     flake-utils.lib.eachDefaultSystem (
-      system:
-      let
+      system: let
         pkgs = nixpkgs.legacyPackages.${system};
 
         inherit (pkgs) lib;
 
         craneLib = crane.mkLib pkgs;
+        
         src = craneLib.cleanCargoSource ./.;
 
         # Common arguments can be set here to avoid repeating them later
@@ -38,16 +37,23 @@
           inherit src;
           strictDeps = true;
 
-          buildInputs = [
-            # Add additional build inputs here
-          ]
-          ++ lib.optionals pkgs.stdenv.isDarwin [
-            # Additional darwin specific inputs can be set here
-            pkgs.libiconv
+          nativeBuildInputs = with pkgs; [
+            pkg-config
           ];
+
+          buildInputs =
+            [
+              # Add additional build inputs here
+              pkgs.openssl
+            ]
+            ++ lib.optionals pkgs.stdenv.isDarwin [
+              # Additional darwin specific inputs can be set here
+              pkgs.libiconv
+            ];
 
           # Additional environment variables can be set directly
           # MY_CUSTOM_VAR = "some value";
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
 
         # Build *just* the cargo dependencies (of the entire workspace),
@@ -56,22 +62,23 @@
         # cache misses when building individual top-level-crates
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-        individualCrateArgs = commonArgs // {
-          inherit cargoArtifacts;
-          inherit (craneLib.crateNameFromCargoToml { inherit src; }) version;
-          # NB: we disable tests since we'll run them all via cargo-nextest
-          doCheck = false;
-        };
+        individualCrateArgs =
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+            inherit (craneLib.crateNameFromCargoToml {inherit src;}) version;
+            # NB: we disable tests since we'll run them all via cargo-nextest
+            doCheck = false;
+          };
 
-        fileSetForCrate =
-          crate:
+        fileSetForCrate = crate:
           lib.fileset.toSource {
             root = ./.;
             fileset = lib.fileset.unions [
               ./Cargo.toml
               ./Cargo.lock
               (craneLib.fileset.commonCargoSources ./crates/my-common)
-              (craneLib.fileset.commonCargoSources ./crates/my-workspace-hack)
+              (craneLib.fileset.commonCargoSources ./crates/tango)
               (craneLib.fileset.commonCargoSources crate)
             ];
           };
@@ -100,11 +107,19 @@
             src = fileSetForCrate ./crates/my-server;
           }
         );
-      in
-      {
+
+        tango-srv = craneLib.buildPackage (
+          individualCrateArgs
+          // {
+            pname = "tango-server";
+            cargoExtraArgs = "-p tango-srv";
+            src = fileSetForCrate ./crates/tango-srv;
+          }
+        );
+      in {
         checks = {
           # Build the crates as part of `nix flake check` for convenience
-          inherit my-cli my-server;
+          inherit my-cli my-server tango-srv;
 
           # Run clippy (and deny all warnings) on the workspace source,
           # again, reusing the dependency artifacts from above.
@@ -136,7 +151,7 @@
           };
 
           my-workspace-toml-fmt = craneLib.taploFmt {
-            src = pkgs.lib.sources.sourceFilesBySuffices src [ ".toml" ];
+            src = pkgs.lib.sources.sourceFilesBySuffices src [".toml"];
             # taplo arguments can be further customized below as needed
             # taploExtraArgs = "--config ./taplo.toml";
           };
@@ -184,7 +199,7 @@
         };
 
         packages = {
-          inherit my-cli my-server;
+          inherit my-cli my-server tango-srv;
         };
 
         apps = {
@@ -193,6 +208,10 @@
           };
           my-server = flake-utils.lib.mkApp {
             drv = my-server;
+          };
+
+          tango-srv = flake-utils.lib.mkApp {
+            drv = tango-srv;
           };
         };
 
