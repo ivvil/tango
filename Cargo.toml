@@ -1,14 +1,10 @@
-[workspace]
-resolver = "2"
-# Note that we define member crates with a wildcard here and NOT with explicit
-# paths because the flake.nix is written in a way such that top-level members
-# (`my-cli` and `my-server`) are built as different derivations which avoid being
-# rebuilt if the other package's sources change.
-members = ["crates/*"]
-
-[workspace.package]
-version = "0.1.0"
-edition = "2021"
-
-[workspace.metadata.crane]
+[package]
 name = "tango"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+hbb_common = { git = "https://github.com/rustdesk/hbb_common.git" }

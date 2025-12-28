@@ -1,9 +1,0 @@
-[package]
-name = "tango-srv"
-version.workspace = true
-edition.workspace = true
-publish = false
-
-[dependencies]
-tango = { version = "0.1", path = "../tango" }
-hbb_common = { git = "https://github.com/rustdesk/hbb_common.git" }

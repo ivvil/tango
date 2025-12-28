@@ -1,5 +1,5 @@
 {
-  description = "Build a cargo workspace";
+  description = "Tango crane";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -29,7 +29,7 @@
         inherit (pkgs) lib;
 
         craneLib = crane.mkLib pkgs;
-        
+
         src = craneLib.cleanCargoSource ./.;
 
         # Common arguments can be set here to avoid repeating them later
@@ -62,64 +62,16 @@
         # cache misses when building individual top-level-crates
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-        individualCrateArgs =
+        tango-crate = craneLib.buildPackage (
           commonArgs
           // {
             inherit cargoArtifacts;
-            inherit (craneLib.crateNameFromCargoToml {inherit src;}) version;
-            # NB: we disable tests since we'll run them all via cargo-nextest
-            doCheck = false;
-          };
-
-        fileSetForCrate = crate:
-          lib.fileset.toSource {
-            root = ./.;
-            fileset = lib.fileset.unions [
-              ./Cargo.toml
-              ./Cargo.lock
-              (craneLib.fileset.commonCargoSources ./crates/my-common)
-              (craneLib.fileset.commonCargoSources ./crates/tango)
-              (craneLib.fileset.commonCargoSources crate)
-            ];
-          };
-
-        # Build the top-level crates of the workspace as individual derivations.
-        # This allows consumers to only depend on (and build) only what they need.
-        # Though it is possible to build the entire workspace as a single derivation,
-        # so this is left up to you on how to organize things
-        #
-        # Note that the cargo workspace must define `workspace.members` using wildcards,
-        # otherwise, omitting a crate (like we do below) will result in errors since
-        # cargo won't be able to find the sources for all members.
-        my-cli = craneLib.buildPackage (
-          individualCrateArgs
-          // {
-            pname = "my-cli";
-            cargoExtraArgs = "-p my-cli";
-            src = fileSetForCrate ./crates/my-cli;
-          }
-        );
-        my-server = craneLib.buildPackage (
-          individualCrateArgs
-          // {
-            pname = "my-server";
-            cargoExtraArgs = "-p my-server";
-            src = fileSetForCrate ./crates/my-server;
-          }
-        );
-
-        tango-srv = craneLib.buildPackage (
-          individualCrateArgs
-          // {
-            pname = "tango-server";
-            cargoExtraArgs = "-p tango-srv";
-            src = fileSetForCrate ./crates/tango-srv;
           }
         );
       in {
         checks = {
           # Build the crates as part of `nix flake check` for convenience
-          inherit my-cli my-server tango-srv;
+          inherit tango-crate;
 
           # Run clippy (and deny all warnings) on the workspace source,
           # again, reusing the dependency artifacts from above.
@@ -178,40 +130,16 @@
               cargoNextestPartitionsExtraArgs = "--no-tests=pass";
             }
           );
-
-          # Ensure that cargo-hakari is up to date
-          my-workspace-hakari = craneLib.mkCargoDerivation {
-            inherit src;
-            pname = "my-workspace-hakari";
-            cargoArtifacts = null;
-            doInstallCargoArtifacts = false;
-
-            buildPhaseCargoCommand = ''
-              cargo hakari generate --diff  # workspace-hack Cargo.toml is up-to-date
-              cargo hakari manage-deps --dry-run  # all workspace crates depend on workspace-hack
-              cargo hakari verify
-            '';
-
-            nativeBuildInputs = [
-              pkgs.cargo-hakari
-            ];
-          };
         };
 
         packages = {
-          inherit my-cli my-server tango-srv;
+          inherit tango-crate;
+          default = tango-crate;
         };
 
         apps = {
-          my-cli = flake-utils.lib.mkApp {
-            drv = my-cli;
-          };
-          my-server = flake-utils.lib.mkApp {
-            drv = my-server;
-          };
-
-          tango-srv = flake-utils.lib.mkApp {
-            drv = tango-srv;
+          tango = flake-utils.lib.mkApp {
+            drv = tango-crate;
           };
         };
 
@@ -224,7 +152,6 @@
 
           # Extra inputs can be added here; cargo and rustc are provided by default.
           packages = [
-            pkgs.cargo-hakari
           ];
         };
       }

@@ -1,9 +1,25 @@
 use std::{collections::HashMap, net::SocketAddr};
 
-use hbb_common::{Stream, bytes::BytesMut, protobuf::Message, rendezvous_proto::{RegisterPeerResponse, RegisterPkResponse, RelayResponse, RendezvousMessage, RequestRelay, register_pk_response, rendezvous_message}, tcp::{FramedStream, new_listener}, tokio::{self, select}, udp::FramedSocket};
+use hbb_common::{
+    bytes::BytesMut,
+    protobuf::Message,
+    rendezvous_proto::{
+        register_pk_response, rendezvous_message, RegisterPeerResponse, RegisterPkResponse,
+        RelayResponse, RendezvousMessage, RequestRelay,
+    },
+    tcp::{new_listener, FramedStream},
+    udp::FramedSocket,
+    Stream,
+};
+use tracing_subscriber::EnvFilter;
+use tracing::info;
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();	
+
     let mut sock = FramedSocket::new("0.0.0.0:21116").await.unwrap();
     let mut listener = new_listener("0.0.0.0:21116", false).await.unwrap();
     let mut rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
@@ -23,8 +39,8 @@ async fn main() {
                     if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
                         match msg_in.union {
                             Some(rendezvous_message::Union::PunchHoleRequest(ph)) => {
-                                println!("PunchHoleRequest for id: {}", ph.id);
-                                if let Some(addr) = id_map.get(&ph.id) {
+                                info!{peer_id = %ph.id, "recived PunchHoleRequest"};
+                                if let Some(addr) = id_map.get(&ph.id) {                                    
                                     let mut msg_out = RendezvousMessage::new();
                                     msg_out.set_request_relay(RequestRelay {
                                         relay_server: relay_server.clone(),
@@ -40,10 +56,10 @@ async fn main() {
                                 msg_out.set_relay_response(RelayResponse {
                                     relay_server: relay_server.clone(),
                                     ..Default::default()
-                                }); 
+                                });
 
                                 if let Some(mut stream) = saved_stream.take() {
-                                    stream.send(&msg_out).await.ok();                                        
+                                    stream.send(&msg_out).await.ok();
                                     if let Ok((stream_a, _)) = rlistener.accept().await {
                                         let mut stream_a = FramedStream::from(stream_a, addr);
                                         stream_a.next_timeout(3000).await;
@@ -68,18 +84,18 @@ async fn relay(
     stream: FramedStream,
     peer: FramedStream,
     sock: &mut FramedSocket,
-    id_map: &mut HashMap<String, SocketAddr>
+    id_map: &mut HashMap<String, SocketAddr>,
 ) {
     let mut peer = peer;
     let mut stream = stream;
 
     peer.set_raw();
     stream.set_raw();
-    
+
     loop {
         tokio::select! {
             Some(Ok((bytes, addr))) = sock.next() => {
-                handle_udp(sock, bytes, addr.into(), id_map).await;                
+                handle_udp(sock, bytes, addr.into(), id_map).await;
             }
             res = peer.next() => {
                 if let Some(Ok(bytes)) = res {
@@ -90,28 +106,25 @@ async fn relay(
             }
             res = stream.next() => {
                 if let Some(Ok(bytes)) = res {
-                    peer.send_bytes(bytes.into()).await.ok();                    
+                    peer.send_bytes(bytes.into()).await.ok();
                 } else {
                     break;
                 }
             }
         }
-
     }
-    
 }
 
 async fn handle_udp(
     sock: &mut FramedSocket,
     bytes: BytesMut,
     addr: SocketAddr,
-    id_map: &mut HashMap<String, SocketAddr>
+    id_map: &mut HashMap<String, SocketAddr>,
 ) {
     if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
         match msg_in.union {
             Some(rendezvous_message::Union::RegisterPeer(rp)) => {
-                println!("Registering peer: {} at {}", rp.id, 
-						 addr);
+                println!("Registering peer: {} at {}", rp.id, addr);
                 id_map.insert(rp.id, addr);
                 let mut msg_out = RendezvousMessage::new();
                 msg_out.set_register_peer_response(RegisterPeerResponse::new());
