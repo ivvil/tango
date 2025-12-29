@@ -50,8 +50,8 @@ async fn main() {
                                     saved_stream = Some(stream);
                                 }
                             },
-                            Some(rendezvous_message::Union::RelayResponse(_)) => {
-                                println!("RelayResponse received {:?}", addr);
+                            Some(rendezvous_message::Union::RelayResponse(_)) => {                                
+                                info!{peer_addr = %addr, "recived RelayResponse"};
                                 let mut msg_out = RendezvousMessage::new();
                                 msg_out.set_relay_response(RelayResponse {
                                     relay_server: relay_server.clone(),
@@ -123,15 +123,15 @@ async fn handle_udp(
 ) {
     if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
         match msg_in.union {
-            Some(rendezvous_message::Union::RegisterPeer(rp)) => {
-                println!("Registering peer: {} at {}", rp.id, addr);
+            Some(rendezvous_message::Union::RegisterPeer(rp)) => {        
+                info!(peer_id = %rp.id, peer_addr = %addr, "Registering peer");
                 id_map.insert(rp.id, addr);
                 let mut msg_out = RendezvousMessage::new();
                 msg_out.set_register_peer_response(RegisterPeerResponse::new());
                 sock.send(&msg_out, addr).await.ok();
             }
             Some(rendezvous_message::Union::RegisterPk(_)) => {
-                println!("Received RegisterPk message from {}", addr);
+                info!("Received RegisterPk message from {}", addr);
                 let mut msg_out = RendezvousMessage::new();
                 msg_out.set_register_pk_response(RegisterPkResponse {
                     result: register_pk_response::Result::OK.into(),
