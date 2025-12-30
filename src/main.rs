@@ -11,21 +11,27 @@ use hbb_common::{
     udp::FramedSocket,
     Stream,
 };
-use tracing_subscriber::EnvFilter;
-use tracing::info;
+use tracing_subscriber::{EnvFilter, fmt};
+use tracing::{info, error};
+
+mod db;
+mod conf;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
+        .with_target(true)
+        .with_thread_names(true)
+        .with_timer(fmt::time::UtcTime::rfc_3339())
         .init();	
 
-    let mut sock = FramedSocket::new("0.0.0.0:21116").await.unwrap();
-    let mut listener = new_listener("0.0.0.0:21116", false).await.unwrap();
-    let mut rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
+    let mut sock = FramedSocket::new("0.0.0.0:21116").await.inspect_err(|e| error!(net_error=%e, "Error binding UDP socket")).unwrap();
+    let mut listener = new_listener("0.0.0.0:21116", false).await.inspect_err(|e| error!(net_error=%e, "Error binding to TCP socket")).unwrap();
+    let mut rlistener = new_listener("0.0.0.0:21117", false).await.inspect_err(|e| error!(net_error=%e, "Error binding to relay TCP socket")).unwrap();
 
     let mut id_map = HashMap::new();
-    let relay_server = std::env::var("IP").unwrap();
+    let relay_server = std::env::var("IP").inspect_err(|e| error!(env_err=%e, "Error reading IP environment variable")).unwrap();
     let mut saved_stream: Option<FramedStream> = None;
 
     loop {
@@ -115,6 +121,7 @@ async fn relay(
     }
 }
 
+#[tracing::instrument(skip(sock, id_map), fields(peer_addr = %addr))]
 async fn handle_udp(
     sock: &mut FramedSocket,
     bytes: BytesMut,

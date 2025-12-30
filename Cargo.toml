@@ -6,5 +6,8 @@ edition = "2024"
 [dependencies]
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "time"] }
 hbb_common = { git = "https://github.com/rustdesk/hbb_common.git" }
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "macros", "tls-rustls-ring-native-roots", "migrate"] }
+serde = {version = "1.0.228", features = ["derive"]}
+confy = {version = "2.0", features = ["toml_conf"] }
