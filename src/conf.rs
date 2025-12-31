@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct TangoConfig {
     version: u8,
     database_url: String,
+    admin_default_username: String,
+    admin_default_password: String,
 }
 
 impl ::std::default::Default for TangoConfig {
@@ -11,6 +13,8 @@ impl ::std::default::Default for TangoConfig {
         TangoConfig {
             version: 0,
             database_url: "".into(),
+            admin_default_username: "admin".into(),
+            admin_default_password: "tango".into(),
         }
     }
 }

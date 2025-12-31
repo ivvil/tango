@@ -16,6 +16,9 @@ use tracing::{info, error};
 
 mod db;
 mod conf;
+mod http;
+mod error;
+mod auth;
 
 #[tokio::main]
 async fn main() {

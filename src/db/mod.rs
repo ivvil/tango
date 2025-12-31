@@ -4,6 +4,7 @@ use hbb_common::ResultType;
 use sqlx::{Pool, Postgres, Transaction, migrate::MigrateError};
 use tracing_subscriber::registry::Data;
 
+#[derive(Clone)]
 pub struct Database {
     pool: Pool<Postgres>,
 }
