@@ -4,27 +4,29 @@ use hbb_common::ResultType;
 use sqlx::{Pool, Postgres, Transaction, migrate::MigrateError};
 use tracing_subscriber::registry::Data;
 
+use crate::error::TangoError;
+
 #[derive(Clone)]
 pub struct Database {
     pool: Pool<Postgres>,
 }
 
 impl Database {
-    pub async fn new(database_url: &str) -> Result<Self, sqlx::Error> {
+    pub async fn new(database_url: &str) -> Result<Self, TangoError> {
         let pool = Pool::<Postgres>::connect_lazy(database_url)?;
 
         Ok(Database { pool })
     }
 
-    pub async fn migrate(&self) -> Result<(), MigrateError> {
-        sqlx::migrate!().run(&self.pool).await
+    pub async fn migrate(&self) -> Result<(), TangoError> {
+        sqlx::migrate!().run(&self.pool).await.map_err(TangoError::Migration)
     }
 
-    pub async fn transaction<F, T>(&self, f: F) -> Result<T, sqlx::Error>
+    pub async fn transaction<F, T>(&self, f: F) -> Result<T, TangoError>
     where
         F: for<'c> FnOnce(
             &'c mut Transaction<'_, Postgres>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, sqlx::Error>> + 'c>>,
+        ) -> Pin<Box<dyn Future<Output = Result<T, TangoError>> + 'c>>,
     {
         let mut tx = self.pool.begin().await?;
         let result = f(&mut tx).await?;

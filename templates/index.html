@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Tango - { page_name }{% endblock %}
+
+{% block content %}
+<div class="main">
+	<header>
+		<a href="/" class="logo">
+			<img src="/static/assets/logo.svg" alt="tango logo">
+			<h1>tango.</h1>
+		</a>
+	</header>
+	<div class="content">
+	  <nav>
+		{% for item in sidebar_items %}
+		<div class="sidebar-item">
+		  <img href="{item.image_href}" alt="{item.image_alt}">
+		  <div class="sidebar-text">
+			{item.name}
+		  </div>
+		</div>
+		{% endfor %}
+	  </nav>
+	</div>
+</div>
+{% endblock %}
+
+{% block head%}
+<style>
+	.main {
+		display: grid;
+		grid-template-columns: 1fr;
+		grid-template-rows: auto 1fr;
+		gap: 0 0;
+		grid-template-areas:
+			"topbar"
+			"main";
+	}
+
+	.content {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		grid-template-rows: 1fr;
+		gap: 0 0;
+		grid-template-areas:
+			"nav"
+			"content";
+		grid-area: main;
+	}
+
+	header {
+		grid-area: topbar;
+		display: grid;
+		align-items: center;
+		grid-template-columns: auto 1fr auto;
+		gap: 0 0;
+		grid-template-areas:
+			"logo pageinfo user";
+	}
+
+	.logo {
+	  grid-area: logo;
+	}
+
+	h1 {
+		font-family: "Michroma", sans-serif;
+	}
+
+	.logo img {
+		width: 2vw;
+	}
+
+	nav {
+	  grid-area: nav;
+	  display: flex;
+	}
+</style>
+{% endblock %}

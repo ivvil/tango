@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Tango - Login{% endblock %}
+
+{% block content %}
+
+<div class="login-page">
+	<div class="centered">
+		<header>
+			<img src="/static/assets/logo.svg" alt="tango logo">
+			<h1>tango.</h1>
+		</header>
+		<main>
+			<h2>Login</h2>
+			<form method="post">
+				<label for="username">Username:</label><br>
+				<input type="text" name="username" id="username"><br>
+
+				<label for="password">Password:</label><br>
+				<input type="password" name="password" id="password"><br>
+
+				<input type="submit" value="Login">
+			</form>
+		</main>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block head %}
+<style>
+	.login-page {
+		background-color: #19191e;
+		display: flex;
+		justify-content: center;
+		/* align-items: center; */
+		padding-top: 5%;
+		width: 100vw;
+		height: 100vh;
+	}
+
+	.centered {
+		display: flex;
+		flex-direction: column;
+	}
+
+	header {
+		display: flex;
+		align-items: end;
+		gap: 5%;
+	}
+
+	h1 {
+		font-family: "Michroma", sans-serif;
+	}
+
+	h2 {
+		margin: 0;
+		margin-bottom: 20%;
+	}
+
+	main {
+		padding: 15%;
+		margin-top: 20%;
+		background-color: #070710;
+		color: white;
+	}
+
+	img {
+		width: 5vw;
+	}
+
+	form {
+	  line-height: 1.7em;
+	}
+</style>
+{% endblock %}

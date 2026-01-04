@@ -1,1 +1,1 @@
-mod webui;
+pub mod webui;
