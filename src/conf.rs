@@ -1,3 +1,4 @@
+use hbb_common::config::RENDEZVOUS_PORT;
 use serde::{Deserialize, Serialize};
 
 use crate::error::TangoError;
@@ -6,9 +7,20 @@ use crate::error::TangoError;
 pub struct TangoConfig {
     pub version: u8,
     pub database_url: String,
+    pub webui: WebUIConfig,
+    pub rustdesksrv: RustdeskSrvConfig,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct WebUIConfig {
     pub admin_default_username: String,
     pub admin_default_password: String,
     pub http_addr: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RustdeskSrvConfig {
+    pub port: i32,
 }
 
 impl ::std::default::Default for TangoConfig {
@@ -16,9 +28,14 @@ impl ::std::default::Default for TangoConfig {
         TangoConfig {
             version: 0,
             database_url: "".into(),
-            admin_default_username: "admin".into(),
-            admin_default_password: "tango".into(),
-            http_addr: "127.0.0.1:80".into(),
+            webui: WebUIConfig {
+                admin_default_username: "admin".into(),
+                admin_default_password: "tango".into(),
+                http_addr: "127.0.0.1:80120".into(),
+            },
+            rustdesksrv: RustdeskSrvConfig {
+                port: RENDEZVOUS_PORT,
+            },
         }
     }
 }

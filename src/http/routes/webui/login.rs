@@ -14,7 +14,7 @@ pub async fn login_post(
     Form(form): Form<LoginForm>,
     cookies: CookieJar,
 ) -> Result<Redirect, TangoError> {
-	if form.username == state.config.admin_default_username && form.password == state.config.admin_default_password {
+	if form.username == state.config.webui.admin_default_username && form.password == state.config.webui.admin_default_password {
 		return Ok(Redirect::to("/"))
 	} 
 

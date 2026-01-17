@@ -54,6 +54,7 @@
           # Additional environment variables can be set directly
           # MY_CUSTOM_VAR = "some value";
           PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+          DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/tango";
         };
 
         # Build *just* the cargo dependencies (of the entire workspace),
@@ -149,9 +150,11 @@
 
           # Additional dev-shell environment variables can be set directly
           # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
+          DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/tango";
 
           # Extra inputs can be added here; cargo and rustc are provided by default.
-          packages = [
+          packages = with pkgs; [
+            sqlx-cli
           ];
         };
       }

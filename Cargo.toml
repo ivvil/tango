@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 argon2 = "0.5.3"
 askama = "0.14.0"
-axum = {version = "0.8.8", features = ["http2"]}
+axum = { version = "0.8.8", features = ["http2"] }
 axum-extra = { version = "0.12.5", features = ["cookie"] }
 confy = { version = "2.0", features = ["toml_conf"] }
 hbb_common = { git = "https://github.com/rustdesk/hbb_common.git" }

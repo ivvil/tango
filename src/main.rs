@@ -23,6 +23,7 @@ mod conf;
 mod db;
 mod error;
 mod http;
+mod rustdesk;
 
 #[tokio::main]
 async fn main() -> Result<(), TangoError> {
@@ -36,7 +37,7 @@ async fn main() -> Result<(), TangoError> {
     let config = load_config()?;
     let db = Database::new(&config.database_url).await?;
 
-    let addr = config.http_addr.clone();
+    let addr = config.webui.http_addr.clone();
 
     let state = HTTPState { config, db };
 

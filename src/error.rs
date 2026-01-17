@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, net::AddrParseError};
 
 use askama::Template;
 use axum::{
@@ -11,13 +11,15 @@ use tokio::task::JoinError;
 
 use crate::http::webui::templates::error::ErrorTemplate;
 
+pub type TangoResult<T> = Result<T, TangoError>;
+
 #[derive(Debug, Error)]
 pub enum TangoError {
     #[error("Database error")]
     Db(#[from] sqlx::Error),
 
-	#[error("Database migration error")]
-	Migration(#[from] MigrateError),
+    #[error("Database migration error")]
+    Migration(#[from] MigrateError),
 
     #[error("Unauthorized")]
     Unauthorized,
@@ -28,31 +30,40 @@ pub enum TangoError {
     #[error("Template rendering error")]
     Render(#[from] askama::Error),
 
-	#[error("Error binding socket")]
-	SockBind(#[from] std::io::Error),
+    #[error("Error binding socket")]
+    SockBind(#[from] std::io::Error),
 
-	#[error("Error starting HTTP server")]
-	HttpServer(#[source] std::io::Error),
+    #[error("Error starting HTTP server")]
+    HttpServer(#[source] std::io::Error),
 
-	#[error("Error loading config")]
-	Config(#[from] confy::ConfyError),
+    #[error("Error loading config")]
+    Config(#[from] confy::ConfyError),
 
-	#[error("Error running async task")]
-	Join(#[from] JoinError)
+    #[error("Error running async task")]
+    Join(#[from] JoinError),
+
+    #[error("Error parsing an IP Address")]
+    IPParse(#[from] AddrParseError),
+
+    #[error("Peer Error")]
+    PeerError(PeerError),
+}
+
+#[derive(Debug, Error)]
+pub enum PeerError {
+    #[error("Error peer already exists")]
+    AlreadyExists,
+
+	#[error("Error peer doesn't exist")]
+	DoesntExist,
 }
 
 impl IntoResponse for TangoError {
     fn into_response(self) -> axum::response::Response {
         let status = match &self {
-            TangoError::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			TangoError::Migration(_) => StatusCode::INTERNAL_SERVER_ERROR,
             TangoError::Unauthorized => StatusCode::UNAUTHORIZED,
             TangoError::Forbidden => StatusCode::FORBIDDEN,
-            TangoError::Render(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			TangoError::SockBind(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			TangoError::HttpServer(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			TangoError::Config(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			TangoError::Join(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         let tmplt = ErrorTemplate {
