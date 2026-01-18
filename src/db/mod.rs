@@ -44,19 +44,17 @@ impl Database {
         Ok(())
     }
 
-    pub async fn select_peer_by_id(&self, id: String) -> TangoResult<Peer> {
-        let db_peer = sqlx::query!(
+    pub async fn select_peer_by_id(&self, id: String) -> TangoResult<Option<Peer>> {
+        match sqlx::query!(
             "SELECT peer_id, address, uuid FROM peers WHERE peer_id = $1",
             id
         )
-        .fetch_one(&self.pool)
-        .await?;
+        .fetch_optional(&self.pool)
+        .await? {
+            Some(peer) => Ok(Some(Peer { socket_address: peer.address.parse()?, rd_id: peer.peer_id, device_uuid: peer.uuid.into() })),
+            None => Ok(None),
+        }
 
-        Ok(Peer {
-            socket_address: db_peer.address.parse()?,
-            rd_id: db_peer.peer_id,
-            device_uuid: db_peer.uuid.into(),
-        })
     }
 
     pub async fn remove_peer_by_uuid(&self, uuid: Bytes) -> TangoResult<()> {

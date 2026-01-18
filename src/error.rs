@@ -47,6 +47,12 @@ pub enum TangoError {
 
     #[error("Peer Error")]
     PeerError(PeerError),
+
+	#[error("I/O Error")]
+	IOError(IOError),
+
+	#[error("Rendezvous protocol error")]
+	RendezvousError,
 }
 
 #[derive(Debug, Error)]
@@ -57,6 +63,13 @@ pub enum PeerError {
 	#[error("Error peer doesn't exist")]
 	DoesntExist,
 }
+
+#[derive(Debug, Error)]
+pub enum IOError {
+	#[error("I/O Error in the main listener")]
+    MainListener
+}
+
 
 impl IntoResponse for TangoError {
     fn into_response(self) -> axum::response::Response {
