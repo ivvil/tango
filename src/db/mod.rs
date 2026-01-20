@@ -6,7 +6,7 @@ use tracing_subscriber::registry::Data;
 
 use crate::{
     error::{TangoError, TangoResult},
-    rustdesk::peer::Peer,
+    rustdesk::{peer::Peer, peer_id::PeerId},
 };
 
 #[derive(Clone)]
@@ -44,17 +44,21 @@ impl Database {
         Ok(())
     }
 
-    pub async fn select_peer_by_id(&self, id: String) -> TangoResult<Option<Peer>> {
+    pub async fn select_peer_by_id(&self, id: PeerId) -> TangoResult<Option<Peer>> {
         match sqlx::query!(
             "SELECT peer_id, address, uuid FROM peers WHERE peer_id = $1",
-            id
+            id.to_string()
         )
         .fetch_optional(&self.pool)
-        .await? {
-            Some(peer) => Ok(Some(Peer { socket_address: peer.address.parse()?, rd_id: peer.peer_id, device_uuid: peer.uuid.into() })),
+        .await?
+        {
+            Some(peer) => Ok(Some(Peer {
+                socket_address: peer.address.parse()?,
+                peer_id: peer.peer_id.try_into()?,
+                device_uuid: peer.uuid.into(),
+            })),
             None => Ok(None),
         }
-
     }
 
     pub async fn remove_peer_by_uuid(&self, uuid: Bytes) -> TangoResult<()> {

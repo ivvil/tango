@@ -9,7 +9,7 @@ use sqlx::migrate::MigrateError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::http::webui::templates::error::ErrorTemplate;
+use crate::{http::webui::templates::error::ErrorTemplate, rustdesk::peer_id::PeerIdError};
 
 pub type TangoResult<T> = Result<T, TangoError>;
 
@@ -46,7 +46,7 @@ pub enum TangoError {
     IPParse(#[from] AddrParseError),
 
     #[error("Peer Error")]
-    PeerError(PeerError),
+    PeerError(#[from] PeerError),
 
 	#[error("I/O Error")]
 	IOError(IOError),
@@ -62,6 +62,9 @@ pub enum PeerError {
 
 	#[error("Error peer doesn't exist")]
 	DoesntExist,
+
+	#[error("ID Error")]
+	IDError(#[from] PeerIdError),
 }
 
 #[derive(Debug, Error)]

@@ -10,10 +10,12 @@ use crate::{
     error::{TangoError, TangoResult},
 };
 
+use super::peer_id::PeerId;
+
 #[derive(Clone)]
 pub struct Peer {
     pub socket_address: SocketAddr,
-    pub rd_id: String,
+    pub peer_id: PeerId,
     pub device_uuid: Bytes,
     pub reg_pk_rate_limiter: Arc<DefaultDirectRateLimiter>,
 }
@@ -22,7 +24,7 @@ impl Default for Peer {
     fn default() -> Self {
         Self {
             socket_address: "0.0.0.0:0".parse().unwrap(),
-            rd_id: "".into(),
+            peer_id: PeerId::default(),
             device_uuid: Bytes::new(),
             reg_pk_rate_limiter: Arc::new(RateLimiter::direct(
                 Quota::with_period(Duration::from_secs(6))
@@ -34,7 +36,7 @@ impl Default for Peer {
 }
 
 pub struct PeersCollection {
-    peers: Arc<RwLock<HashMap<String, Peer>>>, // TODO Implement proper caching
+    peers: Arc<RwLock<HashMap<PeerId, Peer>>>, // TODO Implement proper caching
     pub db: Database,
 }
 
@@ -49,7 +51,7 @@ impl PeersCollection {
     pub async fn add(&mut self, peer: Peer) -> TangoResult<Peer> {
         let mut peer_map = self.peers.write().await;
 
-        match peer_map.entry(peer.rd_id.clone()) {
+        match peer_map.entry(peer.peer_id.clone()) {
             std::collections::hash_map::Entry::Occupied(_) => Err(TangoError::PeerError(
                 crate::error::PeerError::AlreadyExists,
             )),
@@ -60,7 +62,7 @@ impl PeersCollection {
         }
     }
 
-    pub async fn delete_id(&mut self, id: String) -> TangoResult<()> {
+    pub async fn delete_id(&mut self, id: PeerId) -> TangoResult<()> {
         let mut peer_map = self.peers.write().await;
 
         match peer_map.entry(id) {
@@ -74,7 +76,7 @@ impl PeersCollection {
         }
     }
 
-    pub async fn get(&mut self, id: String) -> TangoResult<Option<Peer>> {
+    pub async fn get(&mut self, id: PeerId) -> TangoResult<Option<Peer>> {
         let mut peer_map = self.peers.write().await;
 
         match peer_map.entry(id.clone()) {
@@ -82,7 +84,7 @@ impl PeersCollection {
                 Ok(Some(occupied_entry.get().clone()))
             }
             std::collections::hash_map::Entry::Vacant(_) => {
-                match self.db.select_peer_by_id(id.clone()).await? {
+                match self.db.select_peer_by_id(id.clone().to_string()).await? {
                     Some(p) => {
                         peer_map.insert(id, p.clone());
                         Ok(Some(p))

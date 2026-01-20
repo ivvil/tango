@@ -1,13 +1,18 @@
 use std::net::SocketAddr;
 
-use hbb_common::{protobuf::Message, rendezvous_proto::RendezvousMessage, udp::FramedSocket};
+use hbb_common::{
+    protobuf::Message,
+    rendezvous_proto::{RegisterPeerResponse, RendezvousMessage},
+    udp::FramedSocket,
+};
 use tokio::net::{TcpListener, TcpStream};
 
-use tracing::trace;
+use tracing::{info, trace};
 
 use crate::{
     db::Database,
-    error::{TangoError, TangoResult}, rustdesk::peer::Peer,
+    error::{TangoError, TangoResult},
+    rustdesk::peer::Peer,
 };
 
 use super::peer::PeersCollection;
@@ -66,33 +71,55 @@ impl RendezvousServer {
         }
     }
 
-    async fn rendezvous_handler(&mut self, msg: RendezvousMessage, addr: SocketAddr) -> TangoResult<RendezvousMessage> {
+    async fn rendezvous_handler(
+        &mut self,
+        peer: Peer,
+        msg: RendezvousMessage,
+        addr: SocketAddr,
+    ) -> TangoResult<Option<RendezvousMessage>> {
         if let Some(msg) = msg.union {
             match msg {
                 hbb_common::rendezvous_proto::rendezvous_message::Union::RegisterPeer(
                     register_peer,
                 ) => {
-					if !register_peer.id.is_empty() {
-						trace!("New peer: {} {}", &register_peer.id, &addr);
-						let ip_change = match self.peers.get(register_peer.id).await? {
-							Some(p) => {
-								let ip_change;
-								let request_pk;
+                    if !register_peer.id.is_empty() {
+                        trace!("New peer: {} {}", &register_peer.id, &addr);
+                        let ip_change = match self.peers.get(register_peer.id).await? {
+                            Some(p) => {
+                                let mut do_ip_change = false;
 
-								if p.socket_address.port() != 0 {
-									ip_change = (addr.ip() != p.socket_address.ip()) && !addr.ip().is_loopback();
-								}
+                                if p.socket_address.port() != 0 {
+                                    do_ip_change = (addr.ip() != p.socket_address.ip())
+                                        && !addr.ip().is_loopback();
+                                };
 
-								if  {
-									
-								}
-								ip_change
-							},
-							None => false,
-						};
+                                if do_ip_change {
+                                    Some(p.socket_address.to_string())
+                                } else {
+                                    None
+                                }
+                            }
+                            None => None,
+                        };
 
-					}
-				},
+                        if let Some(p) = ip_change {
+                            info!(
+                                "IP Change for peer {}. Old: {} New: {}",
+                                peer.peer_id, peer.socket_address, p
+                            );
+                        };
+
+                        let mut msg = RendezvousMessage::new();
+                        msg.set_register_peer_response(RegisterPeerResponse {
+                            request_pk: true,
+                            ..Default::default()
+                        });
+
+                        Ok(Some(msg))
+                    } else {
+                        Ok(None)
+                    }
+                }
                 hbb_common::rendezvous_proto::rendezvous_message::Union::RegisterPeerResponse(
                     register_peer_response,
                 ) => todo!(),
@@ -156,21 +183,24 @@ impl RendezvousServer {
                 _ => return Err(TangoError::RendezvousError),
             }
         } else {
-			return Err(TangoError::RendezvousError);
-		}
+            return Err(TangoError::RendezvousError);
+        }
     }
 
-	async fn update_addr(&mut self, id: String, addr: SocketAddr, socket: &mut FramedSocket) -> TangoResult<()> {
-		let mut ip_change = true;
+    async fn update_addr(
+        &mut self,
+        id: String,
+        addr: SocketAddr,
+        socket: &mut FramedSocket,
+    ) -> TangoResult<()> {
+        let mut ip_change = true;
 
-		if let Some(old_peer) = self.peers.get(id).await? {
-			ip_change = (addr.ip() != old_peer.socket_address.ip()) && !addr.ip().is_loopback()
+        if let Some(old_peer) = self.peers.get(id).await? {
+            ip_change = (addr.ip() != old_peer.socket_address.ip()) && !addr.ip().is_loopback()
+        };
 
-			
-		};
-
-		Ok(())
-	}
+        Ok(())
+    }
 }
 
 // let mut sock = FramedSocket::new("0.0.0.0:21116").await.inspect_err(|e| error!(net_error=%e, "Error binding UDP socket")).unwrap();
