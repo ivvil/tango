@@ -11,8 +11,8 @@ use tracing::{info, trace};
 
 use crate::{
     db::Database,
-    error::{TangoError, TangoResult},
-    rustdesk::peer::Peer,
+    error::{PeerError, TangoError, TangoResult},
+    rustdesk::{peer::Peer, peer_id::PeerId},
 };
 
 use super::peer::PeersCollection;
@@ -72,8 +72,7 @@ impl RendezvousServer {
     }
 
     async fn rendezvous_handler(
-        &mut self,
-        peer: Peer,
+        &mut self,        
         msg: RendezvousMessage,
         addr: SocketAddr,
     ) -> TangoResult<Option<RendezvousMessage>> {
@@ -84,7 +83,7 @@ impl RendezvousServer {
                 ) => {
                     if !register_peer.id.is_empty() {
                         trace!("New peer: {} {}", &register_peer.id, &addr);
-                        let ip_change = match self.peers.get(register_peer.id).await? {
+                        let ip_change = match self.peers.get(register_peer.id.try_into().map_err(|e|  {PeerError::IDError(e)})?).await? {
                             Some(p) => {
                                 let mut do_ip_change = false;
 
@@ -105,7 +104,7 @@ impl RendezvousServer {
                         if let Some(p) = ip_change {
                             info!(
                                 "IP Change for peer {}. Old: {} New: {}",
-                                peer.peer_id, peer.socket_address, p
+                                register_peer.id, addr, p
                             );
                         };
 
@@ -146,7 +145,17 @@ impl RendezvousServer {
                 ) => todo!(),
                 hbb_common::rendezvous_proto::rendezvous_message::Union::RegisterPk(
                     register_pk,
-                ) => todo!(),
+                ) => {
+                    if register_pk.id.is_ascii() || register_pk.pk.is_empty() {
+                        return Err(TangoError::PeerError(PeerError::RegisterPk));
+                    }                    
+
+                    let id = PeerId::new(&register_pk.id).map_err(|e| PeerError::IDError(e))?;
+                    let ip = addr.ip();
+                
+                    
+                    Ok(None)
+                },
                 hbb_common::rendezvous_proto::rendezvous_message::Union::RegisterPkResponse(
                     register_pk_response,
                 ) => todo!(),

@@ -18,6 +18,7 @@ pub struct Peer {
     pub peer_id: PeerId,
     pub device_uuid: Bytes,
     pub reg_pk_rate_limiter: Arc<DefaultDirectRateLimiter>,
+    pub pk: Bytes
 }
 
 impl Default for Peer {
@@ -31,6 +32,7 @@ impl Default for Peer {
                     .unwrap()
                     .allow_burst(nonzero!(3u32)),
             )),
+            pk: Bytes::new(),
         }
     }
 }
@@ -84,7 +86,7 @@ impl PeersCollection {
                 Ok(Some(occupied_entry.get().clone()))
             }
             std::collections::hash_map::Entry::Vacant(_) => {
-                match self.db.select_peer_by_id(id.clone().to_string()).await? {
+                match self.db.select_peer_by_id(id.clone()).await? {
                     Some(p) => {
                         peer_map.insert(id, p.clone());
                         Ok(Some(p))

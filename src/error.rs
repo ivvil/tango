@@ -65,6 +65,9 @@ pub enum PeerError {
 
 	#[error("ID Error")]
 	IDError(#[from] PeerIdError),
+
+    #[error("Register PK error")]
+    RegisterPk,
 }
 
 #[derive(Debug, Error)]
