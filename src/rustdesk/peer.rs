@@ -18,7 +18,7 @@ pub struct Peer {
     pub peer_id: PeerId,
     pub device_uuid: Bytes,
     pub reg_pk_rate_limiter: Arc<DefaultDirectRateLimiter>,
-    pub pk: Bytes
+    pub pk: Bytes,
 }
 
 impl Default for Peer {
@@ -95,5 +95,20 @@ impl PeersCollection {
                 }
             }
         }
+    }
+
+    pub async fn update(&mut self, id: PeerId, peer: Peer) -> TangoResult<()> {
+        let mut peer_map = self.peers.write().await;
+
+        match peer_map.entry(id) {
+            std::collections::hash_map::Entry::Occupied(mut occupied_entry) => {
+                occupied_entry.insert(peer);
+            }
+            std::collections::hash_map::Entry::Vacant(_) => {
+                return Err(TangoError::DoesntExist);
+            }
+        }
+
+        Ok(())
     }
 }

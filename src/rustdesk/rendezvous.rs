@@ -2,12 +2,12 @@ use std::net::SocketAddr;
 
 use hbb_common::{
     protobuf::Message,
-    rendezvous_proto::{RegisterPeerResponse, RendezvousMessage},
+    rendezvous_proto::{RegisterPeerResponse, RegisterPkResponse, RendezvousMessage, register_pk_response::Result::{UUID_MISMATCH, TOO_FREQUENT}},
     udp::FramedSocket,
 };
 use tokio::net::{TcpListener, TcpStream};
 
-use tracing::{info, trace};
+use tracing::{info, trace, warn};
 
 use crate::{
     db::Database,
@@ -72,7 +72,7 @@ impl RendezvousServer {
     }
 
     async fn rendezvous_handler(
-        &mut self,        
+        &mut self,
         msg: RendezvousMessage,
         addr: SocketAddr,
     ) -> TangoResult<Option<RendezvousMessage>> {
@@ -83,7 +83,16 @@ impl RendezvousServer {
                 ) => {
                     if !register_peer.id.is_empty() {
                         trace!("New peer: {} {}", &register_peer.id, &addr);
-                        let ip_change = match self.peers.get(register_peer.id.try_into().map_err(|e|  {PeerError::IDError(e)})?).await? {
+                        let ip_change = match self
+                            .peers
+                            .get(
+                                register_peer
+                                    .id
+                                    .try_into()
+                                    .map_err(|e| PeerError::IDError(e))?,
+                            )
+                            .await?
+                        {
                             Some(p) => {
                                 let mut do_ip_change = false;
 
@@ -148,14 +157,42 @@ impl RendezvousServer {
                 ) => {
                     if register_pk.id.is_ascii() || register_pk.pk.is_empty() {
                         return Err(TangoError::PeerError(PeerError::RegisterPk));
-                    }                    
+                    }
 
                     let id = PeerId::new(&register_pk.id).map_err(|e| PeerError::IDError(e))?;
                     let ip = addr.ip();
-                
-                    
+
+                    let old_peer = self.peers.get(id.clone()).await?;
+
+                    if let Some(old_peer) = old_peer {
+                        if old_peer.device_uuid != register_pk.uuid
+                            || old_peer.pk != register_pk.pk
+                            || old_peer.socket_address.ip() != ip
+                        {
+                            warn!(
+                                "Mismatch for peer: {}. Stored: {} {:?} Got: {} {:?}",
+                                id,
+                                ip,
+                                register_pk.pk,
+                                old_peer.socket_address.ip(),
+                                old_peer.pk
+                            );
+
+                            let mut msg = RendezvousMessage::new();
+                            msg.set_register_pk_response(RegisterPkResponse {
+                                result: UUID_MISMATCH.into(),
+                                ..Default::default()
+                            });
+
+							return Ok(Some(msg));
+                        }
+
+						// TODO: Implement rate limiting
+
+                    };
+
                     Ok(None)
-                },
+                }
                 hbb_common::rendezvous_proto::rendezvous_message::Union::RegisterPkResponse(
                     register_pk_response,
                 ) => todo!(),

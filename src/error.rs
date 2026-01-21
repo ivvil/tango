@@ -53,6 +53,9 @@ pub enum TangoError {
 
 	#[error("Rendezvous protocol error")]
 	RendezvousError,
+
+	#[error("Doesn't exist")]
+	DoesntExist
 }
 
 #[derive(Debug, Error)]
